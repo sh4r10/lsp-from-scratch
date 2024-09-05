@@ -27,7 +27,7 @@ func main() {
 }
 
 func handleMessage(logger *log.Logger, method string, content []byte) {
-	logger.Printf("Received message with method: %s", method)
+	logger.Printf("Got msg with method: %s", method)
 	switch method {
 	case "initialize":
 		var request lsp.InitializeRequest
@@ -43,6 +43,14 @@ func handleMessage(logger *log.Logger, method string, content []byte) {
 		writer := os.Stdout
 		writer.Write([]byte(enc))
 		logger.Println("Send the initilize response")
+	case "textDocument/didOpen":
+		var request lsp.DidOpenTextDocumentNotification
+		if err := json.Unmarshal(content, &request); err != nil {
+			logger.Printf("Hey, I couldn't parse this: %s", err)
+		}
+		logger.Printf("Opened file: %s, Content: %s",
+			request.Params.TextDocument.URI, request.Params.TextDocument.Text)
+
 	}
 }
 
@@ -51,5 +59,5 @@ func getLogger(filename string) *log.Logger {
 	if err != nil {
 		panic("Hey, give me a good file!")
 	}
-	return log.New(logfile, "[lsp-from-scratch]", log.Ldate|log.Ltime|log.Lshortfile)
+	return log.New(logfile, "[custom-lsp]", log.Ldate|log.Ltime|log.Lshortfile)
 }
