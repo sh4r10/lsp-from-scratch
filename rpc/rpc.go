@@ -17,10 +17,14 @@ func EncodeMessage(msg any) string {
 	return fmt.Sprintf("Content-Length: %d\r\n\r\n%s", len(content), content)
 }
 
-func DecodeMessage(msg []byte) (int, error) {
+type BaseMessage struct {
+	Method string `json:"method"`
+}
+
+func DecodeMessage(msg []byte) (string, []byte, error) {
 	header, content, found := bytes.Cut(msg, []byte{'\r', '\n', '\r', '\n'})
 	if !found {
-		return 0, errors.New("Did not find the separator \\r\\n")
+		return "", nil, errors.New("Did not find the separator \\r\\n")
 	}
 	// get everthing in the header after the content-length section
 	contentLengthBytes := header[len("Content-Length: "):]
@@ -28,8 +32,13 @@ func DecodeMessage(msg []byte) (int, error) {
 	// because we only have one header
 	contentLength, err := strconv.Atoi(string(contentLengthBytes))
 	if err != nil {
-		return 0, err
+		return "", nil, err
 	}
-	_ = content
-	return contentLength, nil
+
+	var baseMessage BaseMessage
+	if err := json.Unmarshal(content[:contentLength], &baseMessage); err != nil {
+		return "", nil, err
+	}
+
+	return baseMessage.Method, content[:contentLength], nil
 }

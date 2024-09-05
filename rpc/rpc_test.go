@@ -18,13 +18,18 @@ func TestEncoding(t *testing.T) {
 }
 
 func TestDecode(t *testing.T) {
-	incoming := "Content-Length: 17\r\n\r\n{\"Name\":\"shariq\"}"
-	expected := 17
-	actual, err := rpc.DecodeMessage([]byte(incoming))
+	incoming := "Content-Length: 19\r\n\r\n{\"method\":\"shariq\"}"
+	expectedLength := 19
+	method, content, err := rpc.DecodeMessage([]byte(incoming))
+	contentLength := len(content)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if expected != actual {
-		t.Fatalf("\nExpected: %d \nGot: %d", expected, actual)
+	if expectedLength != contentLength {
+		t.Fatalf("\nExpected: %d \nGot: %d", expectedLength, contentLength)
+	}
+
+	if method != "shariq" {
+		t.Fatalf("\nExpected: %s \nGot: %s", "shariq", method)
 	}
 }
