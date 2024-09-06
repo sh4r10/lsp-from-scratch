@@ -1,6 +1,6 @@
 package lsp
 
-type DidOpenTextDocumentNotification struct {
+type TextDocumentDidOpenNotification struct {
 	Params DidOpenTextDocumentParams `json:"params"`
 }
 

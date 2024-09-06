@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"log"
+	"lsp-from-scratch/analyzer"
 	"lsp-from-scratch/lsp"
 	"lsp-from-scratch/rpc"
 	"os"
@@ -15,6 +16,8 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Split(rpc.Split)
 
+	state := analyzer.NewState()
+
 	for scanner.Scan() {
 		message := scanner.Bytes()
 		method, content, err := rpc.DecodeMessage(message)
@@ -22,12 +25,12 @@ func main() {
 			logger.Printf("Error: %s", err)
 			continue
 		}
-		handleMessage(logger, method, content)
+		handleMessage(logger, state, method, content)
 	}
 }
 
-func handleMessage(logger *log.Logger, method string, content []byte) {
-	logger.Printf("Got msg with method: %s", method)
+func handleMessage(logger *log.Logger, state analyzer.State, method string, content []byte) {
+	logger.Printf("Received msg with method: %s", method)
 	switch method {
 	case "initialize":
 		var request lsp.InitializeRequest
@@ -44,13 +47,23 @@ func handleMessage(logger *log.Logger, method string, content []byte) {
 		writer.Write([]byte(enc))
 		logger.Println("Send the initilize response")
 	case "textDocument/didOpen":
-		var request lsp.DidOpenTextDocumentNotification
+		var request lsp.TextDocumentDidOpenNotification
 		if err := json.Unmarshal(content, &request); err != nil {
-			logger.Printf("Hey, I couldn't parse this: %s", err)
+			logger.Printf("Couldn't parse textDocument/didOpen: %s", err)
+			return
 		}
-		logger.Printf("Opened file: %s, Content: %s",
-			request.Params.TextDocument.URI, request.Params.TextDocument.Text)
-
+		logger.Printf("Opened file: %s", request.Params.TextDocument.URI)
+		state.OpenDocument(request.Params.TextDocument.URI, request.Params.TextDocument.Text)
+	case "textDocument/didChange":
+		var request lsp.TextDocumentDidChangeNotification
+		if err := json.Unmarshal(content, &request); err != nil {
+			logger.Printf("Couldn't parse textDocument/didChange: %s", err)
+			return
+		}
+		logger.Printf("Changed  file: %s", request.Params.TextDocument.URI)
+		for _, change := range request.Params.ContentChanges {
+			state.UpdateDocument(request.Params.TextDocument.URI, change.Text)
+		}
 	}
 }
 
