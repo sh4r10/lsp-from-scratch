@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"io"
 	"log"
 	"lsp-from-scratch/analyzer"
 	"lsp-from-scratch/lsp"
@@ -25,11 +26,12 @@ func main() {
 			logger.Printf("Error: %s", err)
 			continue
 		}
-		handleMessage(logger, state, method, content)
+		writer := os.Stdout
+		handleMessage(logger, writer, state, method, content)
 	}
 }
 
-func handleMessage(logger *log.Logger, state analyzer.State, method string, content []byte) {
+func handleMessage(logger *log.Logger, writer io.Writer, state analyzer.State, method string, content []byte) {
 	logger.Printf("Received msg with method: %s", method)
 	switch method {
 	case "initialize":
@@ -42,10 +44,8 @@ func handleMessage(logger *log.Logger, state analyzer.State, method string, cont
 			request.Params.ClientInfo.Version)
 		// our response
 		res := lsp.NewInitializeResponse(request.ID)
-		enc := rpc.EncodeMessage(res)
-		writer := os.Stdout
-		writer.Write([]byte(enc))
-		logger.Println("Send the initilize response")
+		writeResponse(writer, res)
+		logger.Println("Sent the initilize response")
 	case "textDocument/didOpen":
 		var request lsp.TextDocumentDidOpenNotification
 		if err := json.Unmarshal(content, &request); err != nil {
@@ -64,7 +64,22 @@ func handleMessage(logger *log.Logger, state analyzer.State, method string, cont
 		for _, change := range request.Params.ContentChanges {
 			state.UpdateDocument(request.Params.TextDocument.URI, change.Text)
 		}
+	case "textDocument/hover":
+		var request lsp.TextDocumentHoverRequest
+		if err := json.Unmarshal(content, &request); err != nil {
+			logger.Printf("Couldn't parse textDocument/hover: %s", err)
+			return
+		}
+
+		// Create a response and write it back
+		response := state.Hover(&request.ID, request.Params.TextDocument.URI, request.Params.Position)
+		writeResponse(writer, response)
 	}
+}
+
+func writeResponse(writer io.Writer, msg any) {
+	enc := rpc.EncodeMessage(msg)
+	writer.Write([]byte(enc))
 }
 
 func getLogger(filename string) *log.Logger {
