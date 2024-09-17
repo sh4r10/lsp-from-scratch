@@ -70,8 +70,6 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analyzer.State, m
 			logger.Printf("Couldn't parse textDocument/hover: %s", err)
 			return
 		}
-
-		// Create a response and write it back
 		response := state.Hover(&request.ID, request.Params.TextDocument.URI, request.Params.Position)
 		writeResponse(writer, response)
 	case "textDocument/definition":
@@ -80,8 +78,6 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analyzer.State, m
 			logger.Printf("Couldn't parse textDocument/definition: %s", err)
 			return
 		}
-
-		// Create a response and write it back
 		response := state.Definition(&request.ID, request.Params.TextDocument.URI, request.Params.Position)
 		writeResponse(writer, response)
 
@@ -93,6 +89,16 @@ func handleMessage(logger *log.Logger, writer io.Writer, state analyzer.State, m
 		}
 
 		response := state.CodeAction(&request.ID, request.Params.TextDocument.URI)
+		writeResponse(writer, response)
+
+	case "textDocument/completion":
+		var request lsp.TextDocumentCompletionRequest
+		if err := json.Unmarshal(content, &request); err != nil {
+			logger.Printf("Couldn't parse textDocument/codeAction: %s", err)
+			return
+		}
+
+		response := state.Completion(&request.ID, request.Params.TextDocument.URI)
 		writeResponse(writer, response)
 	}
 }
