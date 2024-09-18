@@ -15,12 +15,39 @@ func NewState() State {
 	return State{Documents: map[string]string{}}
 }
 
-func (s *State) OpenDocument(uri, text string) {
-	s.Documents[uri] = text
+func getDiagnostics(text string) []lsp.Diagnostic {
+	list := []lsp.Diagnostic{}
+	for row, line := range strings.Split(text, "\n") {
+		if strings.Contains(line, "VS Code") {
+			index := strings.Index(line, "VS Code")
+			list = append(list, lsp.Diagnostic{
+				Range:    LineRange(row, index, index+len("VS Code")),
+				Severity: 1,
+				Source:   "trust me bro",
+				Message:  "Please avoid profanities, such as VS Code",
+			})
+		}
+		if strings.Contains(line, "Neovim") {
+			index := strings.Index(line, "Neovim")
+			list = append(list, lsp.Diagnostic{
+				Range:    LineRange(row, index, index+len("Neovim")),
+				Severity: 4,
+				Source:   "trust me bro",
+				Message:  "Exquisite choice, if I may say so <3",
+			})
+		}
+	}
+	return list
 }
 
-func (s *State) UpdateDocument(uri, text string) {
+func (s *State) OpenDocument(uri, text string) []lsp.Diagnostic {
 	s.Documents[uri] = text
+	return getDiagnostics(text)
+}
+
+func (s *State) UpdateDocument(uri, text string) []lsp.Diagnostic {
+	s.Documents[uri] = text
+	return getDiagnostics(text)
 }
 
 func (s *State) Hover(id *int, uri string, position lsp.Position) lsp.TextDocumentHoverResponse {
